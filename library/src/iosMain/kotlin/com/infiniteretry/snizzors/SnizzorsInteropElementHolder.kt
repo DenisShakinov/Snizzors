@@ -35,7 +35,7 @@ import androidx.compose.ui.viewinterop.InteropContainer
 import androidx.compose.ui.viewinterop.InteropView
 import androidx.compose.ui.viewinterop.InteropViewGroup
 import androidx.compose.ui.viewinterop.InteropWrappingView
-import androidx.compose.ui.viewinterop.TypedInteropViewHolder
+import androidx.compose.ui.viewinterop.UIKitInteropElementHolder
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.nativeAccessibility
 import androidx.compose.ui.viewinterop.pointerInteropFilter
@@ -52,19 +52,12 @@ internal abstract class SnizzorsInteropElementHolder<T : InteropView>(
   private val interopWrappingView: InteropWrappingView,
   properties: UIKitInteropProperties,
   compositeKeyHashCode : CompositeKeyHashCode,
-) : TypedInteropViewHolder<T>(
+) : UIKitInteropElementHolder<T>(
   factory,
   interopContainer,
   interopWrappingView,
+  properties,
   compositeKeyHashCode,
-  MeasurePolicy { _, constraints ->
-    layout(constraints.minWidth, constraints.minHeight) {
-      // No-op, no children are expected
-      // TODO: attempt to calculate the size of the wrapped view using constraints
-      //  and autolayout system if possible
-      //  https://youtrack.jetbrains.com/issue/CMP-5873/iOS-investigate-intrinsic-sizing-of-interop-elements
-    }
-  }
 ) {
   constructor(
     factory: () -> T,
@@ -81,24 +74,25 @@ internal abstract class SnizzorsInteropElementHolder<T : InteropView>(
     compositeKeyHashCode = compositeKeyHashCode
   )
 
+  override val measurePolicy: MeasurePolicy = MeasurePolicy { _, constraints ->
+    layout(constraints.minWidth, constraints.minHeight) {
+      // No-op, no children are expected
+      // TODO: attempt to calculate the size of the wrapped view using constraints
+      //  and autolayout system if possible
+      //  https://youtrack.jetbrains.com/issue/CMP-5873/iOS-investigate-intrinsic-sizing-of-interop-elements
+    }
+  }
+
   // TODO: no more clipping. rename/refactor?
   private var currentUnclippedRect: IntRect? = null
   private var currentClippedRect: IntRect? = null
   private var currentUserComponentRect: IntRect? = null
 
-  var properties = properties
-    set(value) {
-      if (field != value) {
-        field = value
-        onPropertiesChanged()
-      }
-    }
-
   /**
    * Immediate frame of underlying user component. Can be different from
    * [currentUserComponentRect] due to scheduling.
    */
-  protected abstract var userComponentCGRect: CValue<CGRect>
+  abstract override var userComponentCGRect: CValue<CGRect>
 
   init {
     onPropertiesChanged()
